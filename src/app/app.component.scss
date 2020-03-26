@@ -1,0 +1,20 @@
+section {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  .left {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 50vw;
+    border-right: solid 1px blue;
+  }
+  .right {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 50vw;
+  }
+}

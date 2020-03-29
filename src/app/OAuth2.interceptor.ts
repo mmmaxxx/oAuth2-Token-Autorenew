@@ -1,7 +1,7 @@
 import {Injectable} from '@angular/core';
 import {HttpClient, HttpEvent, HttpHandler, HttpInterceptor, HttpRequest} from '@angular/common/http';
 import {BehaviorSubject, Observable, of, Subject, Subscription, throwError} from 'rxjs';
-import {catchError, switchMap} from 'rxjs/operators';
+import {catchError, filter, switchMap} from 'rxjs/operators';
 import {ApiService} from './api.service';
 
 @Injectable()
@@ -15,7 +15,7 @@ export class OAuth2Interceptor implements HttpInterceptor {
   intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
 
 
-    console.log('-- INTERCEPt --');
+    console.log('-- INTERCEPt --', req.body, next);
     // Intercept all requests,
     // check time in local storage, and trigger token refresh call when necessary
     const currentTime = Math.floor(Date.now() / 1000);
@@ -30,52 +30,32 @@ export class OAuth2Interceptor implements HttpInterceptor {
 
         if (!this.accessTokenError$.getValue()) {
           this.accessTokenError$.next(true);
-          console.log('HERE!');
+          console.log('REFRESH TOKEN NOW');
 
+          // todo make sure not to call this on login
+          // todo chain the old request to the token one
 
-          // you should probably clone the request here
-          // req.clone({url: refreshtokenURL, params: refreshtokenPARAMS})
-          req.clone({
+          const formData: any = new FormData();
+          formData.append('grant_type', 'refresh_token');
+          formData.append('client_id', this.api.CLIENT_ID);
+          formData.append('refresh_token', refreshToken);
+          formData.append('scope', 'authenticated');
+          const initialReq = req;
+          const newReq = req.clone({
             method: 'POST',
-            url: 'test'
-          })
-
-          return this.api.renewAccessToken(refreshToken)
-            .pipe(
-              switchMap((event: any) => {
-                console.log('RENEW TRIGGERED');
-                localStorage.setItem('auth__access_token', event.access_token);
-                localStorage.setItem('auth__refresh_token', event.refresh_token);
-                localStorage.setItem('auth__token_expiry', event.expires_in);
-                localStorage.setItem('auth__token_created', Math.floor(Date.now() / 1000).toString());
-
-                this.accessTokenError$.next(false);
-                console.log('req', req);
-                const newRequest = req.clone({
-                  setHeaders: {
-                    Authorization: `Bearer ${localStorage.getItem('auth__access_token')}`
-                  }
-                });
-                return next.handle(newRequest);
-              }),
-              catchError(err => {
-                // error caught when trying to refresh token
-                console.log('Error caught', err);
-                localStorage.clear();
-                return throwError(err);
-              })
-            );
-        } else {
-          // Not the first error, wait for access / refresh token
-          console.log('NOT FIRST REQUEST!');
-          return this.waitForNewTokens().pipe(
+            url: this.api.DOMAIN + '/oauth/token',
+            body: formData
+          });
+          return next.handle(newReq).pipe(
+            filter((request: any) => request.type !== 0),
             switchMap((event: any) => {
-              const newRequest = req.clone({
-                setHeaders: {
-                  Authorization: `Bearer ${localStorage.getItem('auth__access_token')}`
-                }
-              });
-              return next.handle(newRequest);
+              console.log('HELLO TOKEN EVENT', event);
+              localStorage.setItem('auth__access_token', event.body.access_token);
+              localStorage.setItem('auth__refresh_token', event.body.refresh_token);
+              localStorage.setItem('auth__token_expiry', event.body.expires_in);
+              localStorage.setItem('auth__token_created', Math.floor(Date.now() / 1000).toString());
+              this.accessTokenError$.next(false);
+              return next.handle(initialReq);
             })
           );
         }

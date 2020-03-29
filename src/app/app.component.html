@@ -11,9 +11,15 @@
       </div>
       <div>
         <input type="submit" value="Submit" (click)="authenticate()">
+        <input type="button" value="Logout" (click)="logout()">
       </div>
     </form>
   </div>
-  <div class="right">{{ profileData | json }}</div>
+  <div class="right">
+    <div [ngStyle]="{ background: (profileData?.USER_LOGGED_IN) ? 'green' : 'red' }">{{ profileData?.USER_LOGGED_IN }}</div>
+    <div>
+      {{ profileData | json }}
+    </div>
+  </div>
 </section>
 

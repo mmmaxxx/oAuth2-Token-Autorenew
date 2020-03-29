@@ -36,6 +36,13 @@ export class AppComponent implements OnInit {
     );
   }
 
+  logout() {
+    localStorage.removeItem('auth__access_token');
+    localStorage.removeItem('auth__refresh_token');
+    localStorage.removeItem('auth__token_expiry');
+    localStorage.removeItem('auth__token_created');
+  }
+
   manualRefresh() {
     this.api.renewAccessToken(localStorage.getItem('auth__refresh_token')).subscribe(data => {
       console.log('SUBSCRIBE DATA', data);

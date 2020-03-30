@@ -21,7 +21,10 @@ export class AppComponent implements OnInit {
   }
 
   ngOnInit() {
+    setTimeout(() => {
+      this.manualRefresh();
 
+    }, 4000);
 
   }
 

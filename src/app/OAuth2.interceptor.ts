@@ -1,7 +1,7 @@
 import {Injectable} from '@angular/core';
 import {HttpClient, HttpEvent, HttpHandler, HttpInterceptor, HttpRequest} from '@angular/common/http';
 import {BehaviorSubject, Observable, of, Subject, Subscription, throwError} from 'rxjs';
-import {catchError, filter, switchMap} from 'rxjs/operators';
+import {catchError, debounceTime, distinctUntilChanged, filter, switchMap} from 'rxjs/operators';
 import {ApiService} from './api.service';
 
 @Injectable()
@@ -10,6 +10,9 @@ export class OAuth2Interceptor implements HttpInterceptor {
   accessTokenError$: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);
 
   constructor(private api: ApiService) {
+    this.accessTokenError$.subscribe(logg => {
+      console.log('LOGGING', logg);
+    });
   }
 
   intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
@@ -48,6 +51,7 @@ export class OAuth2Interceptor implements HttpInterceptor {
           });
           return next.handle(newReq).pipe(
             filter((request: any) => request.type !== 0),
+            distinctUntilChanged(),
             switchMap((event: any) => {
               console.log('HELLO TOKEN EVENT', event);
               localStorage.setItem('auth__access_token', event.body.access_token);
@@ -61,10 +65,11 @@ export class OAuth2Interceptor implements HttpInterceptor {
         }
       }
     }
-
-
-
-    return next.handle(req);
+    if ( !this.accessTokenError$.getValue() ) {
+      return next.handle(req);
+    } else {
+      // TODO this is where you would queue the requests and run them later
+    }
   }
 
   waitForNewTokens(): Observable<any> {
